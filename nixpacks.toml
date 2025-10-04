@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python312", "curl"]
+
+[phases.install]
+cmds = ["pip install uv", "uv pip install --system -e ."]
+
+[start]
+cmd = "uvicorn dailydevq_backend.main:app --host 0.0.0.0 --port $PORT"

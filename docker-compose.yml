@@ -1,0 +1,177 @@
+version: '3.9'
+
+# DailyDevQ 백엔드 전용 Docker Compose
+# 프론트엔드는 dailydevq-app 레포에서 별도 관리
+
+services:
+  # PostgreSQL 데이터베이스
+  postgres:
+    image: postgres:16-alpine
+    container_name: dailydevq-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dailydevq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dailydevq123}
+      POSTGRES_DB: ${POSTGRES_DB:-dailydevq}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dailydevq}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dailydevq-network
+
+  # Redis 캐시
+  redis:
+    image: redis:7-alpine
+    container_name: dailydevq-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dailydevq-network
+
+  # DynamoDB Local (AWS 개발용)
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: dailydevq-dynamodb
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    ports:
+      - "${DYNAMODB_PORT:-8000}:8000"
+    volumes:
+      - dynamodb_data:/home/dynamodblocal/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dailydevq-network
+
+  # LocalStack (AWS 서비스 에뮬레이션)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: dailydevq-localstack
+    environment:
+      SERVICES: s3,ses,secretsmanager,ssm
+      DEBUG: ${LOCALSTACK_DEBUG:-0}
+      DATA_DIR: /tmp/localstack/data
+      AWS_DEFAULT_REGION: ${AWS_REGION:-ap-northeast-2}
+    ports:
+      - "${LOCALSTACK_PORT:-4566}:4566"
+    volumes:
+      - localstack_data:/tmp/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dailydevq-network
+
+  # FastAPI 백엔드
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: dailydevq-backend
+    environment:
+      # 데이터베이스 설정
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dailydevq}:${POSTGRES_PASSWORD:-dailydevq123}@postgres:5432/${POSTGRES_DB:-dailydevq}
+
+      # Redis 설정
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis123}@redis:6379/0
+
+      # AWS 설정 (LocalStack)
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_ENDPOINT_URL: http://localstack:4566
+
+      # DynamoDB 설정
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+      DYNAMODB_TABLE_PREFIX: ${DYNAMODB_TABLE_PREFIX:-dailydevq-dev}
+
+      # S3 설정
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-dailydevq-dev-bucket}
+      S3_ENDPOINT: http://localstack:4566
+
+      # 애플리케이션 설정
+      DEBUG: ${DEBUG:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
+
+      # JWT 설정
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_HOURS: 24
+
+      # CORS 설정 (프론트엔드 허용)
+      CORS_ORIGINS: http://localhost:3000,http://frontend:3000
+
+      # OpenAI 설정
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+      # Anthropic 설정
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - .:/app
+      - backend_venv:/app/.venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      dynamodb-local:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - dailydevq-network
+    restart: unless-stopped
+
+  # MailHog (개발용 메일 서버)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: dailydevq-mailhog
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"  # SMTP
+      - "${MAILHOG_WEB_PORT:-8025}:8025"   # Web UI
+    networks:
+      - dailydevq-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  dynamodb_data:
+    driver: local
+  localstack_data:
+    driver: local
+  backend_venv:
+    driver: local
+
+networks:
+  dailydevq-network:
+    name: dailydevq-shared
+    driver: bridge

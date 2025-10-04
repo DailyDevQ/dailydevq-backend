@@ -1,0 +1,77 @@
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 가상환경
+venv/
+env/
+ENV/
+.venv
+
+# uv 캐시
+.uv
+
+# 테스트
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.cover
+.hypothesis/
+
+# 환경 변수
+.env
+.env.*
+.env.local
+
+# 로그
+*.log
+logs/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# 문서
+README.md
+*.md
+docs/
+
+# 데이터베이스
+*.db
+*.sqlite
+*.sqlite3
+
+# 임시 파일
+tmp/
+temp/
+*.tmp
+
+# 빌드 결과
+dist/
+build/
+*.egg-info/

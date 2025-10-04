@@ -45,13 +45,11 @@ services:
   dynamodb-local:
     image: amazon/dynamodb-local:latest
     container_name: dailydevq-dynamodb
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
     ports:
       - "${DYNAMODB_PORT:-8000}:8000"
-    volumes:
-      - dynamodb_data:/home/dynamodblocal/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"]
+      test: ["CMD-SHELL", "curl -s http://localhost:8000 | grep -q 'MissingAuthenticationToken' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,12 +63,12 @@ services:
     environment:
       SERVICES: s3,ses,secretsmanager,ssm
       DEBUG: ${LOCALSTACK_DEBUG:-0}
-      DATA_DIR: /tmp/localstack/data
+      DATA_DIR: /var/lib/localstack
       AWS_DEFAULT_REGION: ${AWS_REGION:-ap-northeast-2}
     ports:
-      - "${LOCALSTACK_PORT:-4566}:4566"
+      - "${LOCALSTACK_PORT:-14566}:4566"
     volumes:
-      - localstack_data:/tmp/localstack
+      - localstack_data:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
@@ -97,7 +95,7 @@ services:
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
-      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ENDPOINT_URL: http://localstack:4566  # Internal docker network uses 4566
 
       # DynamoDB 설정
       DYNAMODB_ENDPOINT: http://dynamodb-local:8000
@@ -105,7 +103,7 @@ services:
 
       # S3 설정
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-dailydevq-dev-bucket}
-      S3_ENDPOINT: http://localstack:4566
+      S3_ENDPOINT: http://localstack:4566  # Internal docker network uses 4566
 
       # 애플리케이션 설정
       DEBUG: ${DEBUG:-true}
@@ -126,7 +124,7 @@ services:
       # Anthropic 설정
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${BACKEND_PORT:-8001}:8000"
     volumes:
       - .:/app
       - backend_venv:/app/.venv

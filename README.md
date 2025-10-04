@@ -1,6 +1,6 @@
 # DailyDevQ Backend
 
-AI 기반 기술 면접 준비 서비스의 FastAPI 백엔드 API 서버
+DailyDevQ FastAPI 백엔드 API 서버
 
 ## 🚀 빠른 시작
 
@@ -23,21 +23,28 @@ docker-compose up --build -d
 
 ### 3. API 접근
 
-- **API 서버**: http://localhost:8000
-- **API 문서 (Swagger)**: http://localhost:8000/docs
-- **API 문서 (ReDoc)**: http://localhost:8000/redoc
+- **API 서버**: http://localhost:8001
+- **API 문서 (Swagger)**: http://localhost:8001/docs
+- **API 문서 (ReDoc)**: http://localhost:8001/redoc
+- **LocalStack Dashboard**: http://localhost:14566/_localstack/health
+- **DynamoDB Local**: http://localhost:8000
 - **MailHog (이메일 테스트)**: http://localhost:8025
 
 ## 📦 포함된 서비스
 
-| 서비스 | 포트 | 설명 |
-|--------|------|------|
-| FastAPI Backend | 8000 | API 서버 |
-| PostgreSQL | 5432 | 메인 데이터베이스 |
-| Redis | 6379 | 캐시 서버 |
-| DynamoDB Local | 8000 | NoSQL (AWS 개발용) |
-| LocalStack | 4566 | AWS 서비스 에뮬레이션 |
-| MailHog | 8025 | 이메일 테스트 UI |
+| 서비스 | 호스트 포트 | 컨테이너 포트 | 설명 |
+|--------|------------|--------------|------|
+| FastAPI Backend | **8001** | 8000 | API 서버 |
+| DynamoDB Local | **8000** | 8000 | NoSQL (AWS 개발용) |
+| LocalStack | **14566** | 4566 | AWS 서비스 에뮬레이션 (S3, SES) |
+| PostgreSQL | **5432** | 5432 | 메인 데이터베이스 |
+| Redis | **6379** | 6379 | 캐시 서버 |
+| MailHog (Web UI) | **8025** | 8025 | 이메일 테스트 UI |
+| MailHog (SMTP) | **1025** | 1025 | 이메일 SMTP 서버 |
+
+> **⚠️ 포트 변경 사항:**
+> - Backend: 8000 → **8001** (DynamoDB와 충돌 방지)
+> - LocalStack: 4566 → **14566** (Windows 예약 포트 충돌 방지)
 
 ## 🛠️ 개발 명령어
 
@@ -148,6 +155,16 @@ docker-compose exec backend uv run pytest tests/test_main.py
 2. 변경 사항 커밋
 3. 테스트 실행
 4. PR 생성
+
+## 🔧 트러블슈팅
+
+Docker 환경 설정 중 문제가 발생하면 [트러블슈팅 가이드](docs/troubleshooting.md)를 참고하세요.
+
+주요 해결 사항:
+- LocalStack 포트 충돌 (4566 → 14566)
+- Backend 포트 충돌 (8000 → 8001)
+- DynamoDB Local Healthcheck 설정
+- Docker 네트워크 재생성 이슈
 
 ## 📄 라이선스
 

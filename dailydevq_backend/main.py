@@ -4,18 +4,19 @@ FastAPI 메인 애플리케이션
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from dailydevq_backend.core.config import settings
+from dailydevq_backend.api.v1 import subscribe, auth
 
 app = FastAPI(
     title="DailyDevQ API",
-    description="AI-powered technical interview preparation service",
+    description="Tech Newsletter & Developer Community Platform",
     version="1.0.0",
-    docs_url="/docs" if os.getenv("ENABLE_SWAGGER", "true").lower() == "true" else None,
-    redoc_url="/redoc" if os.getenv("ENABLE_REDOC", "true").lower() == "true" else None,
+    docs_url="/docs" if settings.ENABLE_SWAGGER else None,
+    redoc_url="/redoc" if settings.ENABLE_REDOC else None,
 )
 
 # CORS 설정
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+cors_origins = settings.CORS_ORIGINS.split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -23,6 +24,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# API 라우터 등록
+app.include_router(subscribe.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
 
 
 @app.get("/")
@@ -56,6 +61,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "dailydevq_backend.main:app",
         host="0.0.0.0",
-        port=int(os.getenv("BACKEND_PORT", "8000")),
+        port=settings.BACKEND_PORT,
         reload=True,
     )
